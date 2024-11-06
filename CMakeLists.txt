@@ -4,7 +4,7 @@ if (NOT DEFINED PROJECT_NAME AND CISTA_HASH STREQUAL "FNV1A")
   set(CISTA_INSTALL ON)
 endif()
 
-project(cista LANGUAGES CXX VERSION 0.7)
+project(cista LANGUAGES C CXX VERSION 0.7)
 
 include(GNUInstallDirs)
 
@@ -36,12 +36,14 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR
      -Wno-deprecated-declarations
      -Wno-ctad-maybe-unsupported
      -Wno-self-assign-overloaded
+     -Wno-switch-default
      -Werror
   )
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   set(cista-compile-flags -Wall -Wextra)
 endif()
 
+option(CISTA_FMT "add libfmt support" ON)
 option(CISTA_ZERO_OUT "zero out fresh memory for valgrind" OFF)
 option(CISTA_COVERAGE "generate coverage report" OFF)
 option(CISTA_GENERATE_TO_TUPLE "generate include/cista/reflection/to_tuple.h" OFF)
@@ -62,6 +64,9 @@ if (CISTA_ZERO_OUT)
 endif()
 if (CISTA_USE_MIMALLOC)
   target_compile_definitions(cista INTERFACE CISTA_USE_MIMALLOC=1)
+endif()
+if (CISTA_FMT)
+  target_compile_definitions(cista INTERFACE CISTA_FMT)
 endif()
 target_include_directories(cista SYSTEM INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
@@ -135,16 +140,19 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR
   foreach(fuzz-file ${fuzz-files})
     get_filename_component(test-name ${fuzz-file} NAME_WE)
 
-    add_executable(cista-fuzz-${test-name}-main EXCLUDE_FROM_ALL ${fuzz-file})
+    add_executable(cista-fuzz-${test-name}-main EXCLUDE_FROM_ALL ${fuzz-file}
+            fuzz/dependencies/rtree_c/rtree_c.c)
     target_link_libraries(cista-fuzz-${test-name}-main cista -fsanitize=address,undefined)
     target_compile_options(cista-fuzz-${test-name}-main PRIVATE -g -O0)
     target_compile_definitions(cista-fuzz-${test-name}-main PRIVATE MAIN)
 
-    add_executable(cista-fuzz-${test-name} EXCLUDE_FROM_ALL ${fuzz-file})
+    add_executable(cista-fuzz-${test-name} EXCLUDE_FROM_ALL ${fuzz-file}
+            fuzz/dependencies/rtree_c/rtree_c.c)
     target_link_libraries(cista-fuzz-${test-name} cista -fsanitize=address,undefined,fuzzer)
     target_compile_options(cista-fuzz-${test-name} PRIVATE -g -O0 -fsanitize=address,fuzzer)
 
-    add_executable(cista-fuzz-${test-name}-seed EXCLUDE_FROM_ALL ${fuzz-file})
+    add_executable(cista-fuzz-${test-name}-seed EXCLUDE_FROM_ALL ${fuzz-file}
+            fuzz/dependencies/rtree_c/rtree_c.c)
     target_link_libraries(cista-fuzz-${test-name}-seed cista)
     target_compile_definitions(cista-fuzz-${test-name}-seed PRIVATE GENERATE_SEED)
 

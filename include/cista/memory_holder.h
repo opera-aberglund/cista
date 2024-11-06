@@ -19,10 +19,20 @@ struct wrapped {
   }
   explicit wrapped(raw::unique_ptr<T> el) : el_{std::move(el)} {}
 
+  void reset() {
+    el_->~T();
+    if (std::holds_alternative<buffer>(mem_)) {
+      std::get<buffer>(mem_) = buffer{};
+    } else if (std::holds_alternative<byte_buf>(mem_)) {
+      std::get<byte_buf>(mem_) = byte_buf{};
+    }
+  }
+
   friend bool operator==(wrapped const& x, std::nullptr_t) {
     return x.el_ == nullptr;
   }
 
+  operator bool() const { return el_.get() != nullptr; }
   T* get() const noexcept { return el_.get(); }
   T* operator->() noexcept { return el_.get(); }
   T const* operator->() const noexcept { return el_.get(); }
